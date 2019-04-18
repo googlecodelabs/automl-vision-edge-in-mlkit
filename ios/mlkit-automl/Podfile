@@ -1,0 +1,11 @@
+source 'https://cpdc-eap.googlesource.com/firebase-ml.git'
+source 'https://github.com/CocoaPods/Specs.git'
+
+platform :ios, '9.0'
+use_frameworks!
+
+target 'MLVisionExample' do
+  pod 'FirebaseMLVision', '0.1.51'
+  pod 'FirebaseMLCommon', '0.1.51'
+  pod 'FirebaseMLVisionAutoML', '0.1.51'
+end
