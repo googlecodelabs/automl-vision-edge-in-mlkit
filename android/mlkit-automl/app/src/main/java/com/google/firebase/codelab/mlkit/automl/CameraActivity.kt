@@ -17,10 +17,9 @@
 package com.google.firebase.codelab.mlkit.automl
 
 import android.os.Bundle
-import androidx.appcompat.app.AppCompatActivity
 
-/** Main `Activity` class for the Camera app.  */
-class CameraActivity : AppCompatActivity() {
+/** `Activity` class that classify frames from camera feed. */
+class CameraActivity : BaseActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)

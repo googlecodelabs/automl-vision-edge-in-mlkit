@@ -16,22 +16,20 @@
 
 package com.google.firebase.codelab.mlkit.automl
 
+import android.app.Activity
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
-import androidx.core.content.FileProvider
-import androidx.appcompat.app.AppCompatActivity
 import android.util.Log
-import android.view.View
-import android.widget.AdapterView
-import android.widget.AdapterView.OnItemSelectedListener
-import android.widget.ArrayAdapter
+import android.widget.Button
+import android.widget.ImageButton
 import android.widget.ImageView
-import android.widget.Spinner
 import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import com.google.firebase.ml.common.FirebaseMLException
 import com.google.firebase.ml.vision.common.FirebaseVisionImage
 import java.io.File
@@ -39,58 +37,47 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 
-
 class StillImageActivity : AppCompatActivity() {
 
   private var currentPhotoFile: File? = null
-  private var imageSpinner: Spinner? = null
   private var imagePreview: ImageView? = null
   private var textView: TextView? = null
 
   private var classifier: ImageClassifier? = null
+  private var currentImageIndex = 0
+  private var bundledImageList: Array<String>? = null
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
-    setContentView(R.layout.activity_still_image)
 
-    imageSpinner = findViewById(R.id.image_spinner)
+    setContentView(R.layout.activity_still_image)
     imagePreview = findViewById(R.id.image_preview)
     textView = findViewById(R.id.result_text)
+    findViewById<ImageButton>(R.id.photo_camera_button)?.setOnClickListener { takePhoto() }
+    findViewById<ImageButton>(R.id.photo_library_button)?.setOnClickListener { chooseFromLibrary() }
+    findViewById<ImageButton>(R.id.video_camera_button)?.setOnClickListener { clickLiveCameraFeed() }
+    findViewById<Button>(R.id.next_image_button)?.setOnClickListener { clickNextImage() }
 
-    val imageList = resources.getStringArray(R.array.image_name_array)
-    val captureImageItemIndex = imageList.size
-    val spinnerItemList = imageList.clone().plus(getString(R.string.capture_with_camera))
+    // Get list of bundled images.
+    bundledImageList = resources.getStringArray(R.array.image_name_array)
 
-    // Setup image selector
-    ArrayAdapter<CharSequence>(this, android.R.layout.simple_spinner_item, spinnerItemList).also {
-      it.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-      imageSpinner?.adapter = it
-    }
-    imageSpinner?.onItemSelectedListener = object : OnItemSelectedListener {
-      override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-
-      override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-        if (position == captureImageItemIndex) {
-          dispatchTakePictureIntent()
-        } else {
-          // Load image from resource
-          val imageName = imageList[position]
-          val drawableId = resources.getIdentifier(imageName, "drawable", packageName)
-          val bitmap = BitmapFactory.decodeResource(resources, drawableId)
-
-          classifyImage(bitmap)
-        }
-      }
-    }
-
-    // Setup image classifier
+    // Setup image classifier.
     try {
       classifier = ImageClassifier(this)
     } catch (e: FirebaseMLException) {
       textView?.text = getString(R.string.fail_to_initialize_img_classifier)
     }
+
+    // Classify the first image in the bundled list.
+    classifyBundledImage(currentImageIndex)
   }
 
+  override fun onDestroy() {
+    classifier?.close()
+    super.onDestroy()
+  }
+
+  /** Create a file to pass to camera app */
   @Throws(IOException::class)
   private fun createImageFile(): File {
     // Create an image file name
@@ -101,29 +88,83 @@ class StillImageActivity : AppCompatActivity() {
             ".jpg", /* suffix */
             storageDir /* directory */
     ).apply {
-      // Save a file: path for use with ACTION_VIEW intents
+      // Save a file: path for use with ACTION_VIEW intents.
       currentPhotoFile = this
     }
   }
 
-  private fun dispatchTakePictureIntent() {
+  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    if (resultCode != Activity.RESULT_OK) return
+
+    when (requestCode) {
+      // Make use of FirebaseVisionImage.fromFilePath to take into account
+      // Exif Orientation of the image files.
+      REQUEST_IMAGE_CAPTURE -> {
+        FirebaseVisionImage.fromFilePath(this, Uri.fromFile(currentPhotoFile)).also {
+          classifyImage(it.bitmap)
+        }
+      }
+      REQUEST_PHOTO_LIBRARY -> {
+        val selectedImageUri = data?.data ?: return
+        FirebaseVisionImage.fromFilePath(this, selectedImageUri).also {
+          classifyImage(it.bitmap)
+        }
+      }
+    }
+  }
+
+  /** Run image classification on the given [Bitmap] */
+  private fun classifyImage(bitmap: Bitmap) {
+    if (classifier == null) {
+      textView?.text = getString(R.string.uninitialized_img_classifier_or_invalid_context)
+      return
+    }
+
+    // Show image on screen.
+    imagePreview?.setImageBitmap(bitmap)
+
+    // Classify image.
+    classifier?.classifyFrame(bitmap)?.
+      addOnCompleteListener { task ->
+        if (task.isSuccessful) {
+          textView?.text = task.result
+        } else {
+          val e = task.exception
+          Log.e(TAG, "Error classifying frame", e)
+          textView?.text = e?.message
+        }
+      }
+  }
+
+  private fun chooseFromLibrary() {
+    val intent = Intent(Intent.ACTION_PICK)
+    intent.type = "image/*"
+
+    // Only accept JPEG or PNG format.
+    val mimeTypes = arrayOf("image/jpeg", "image/png")
+    intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes)
+
+    startActivityForResult(intent, REQUEST_PHOTO_LIBRARY)
+  }
+
+  private fun takePhoto() {
     Intent(MediaStore.ACTION_IMAGE_CAPTURE).also { takePictureIntent ->
-      // Ensure that there's a camera activity to handle the intent
+      // Ensure that there's a camera activity to handle the intent.
       takePictureIntent.resolveActivity(packageManager)?.also {
-        // Create the File where the photo should go
+        // Create the File where the photo should go.
         val photoFile: File? = try {
           createImageFile()
         } catch (e: IOException) {
-          // Error occurred while creating the File
+          // Error occurred while creating the File.
           Log.e(TAG, "Unable to save image to run classification.", e)
           null
         }
-        // Continue only if the File was successfully created
+        // Continue only if the File was successfully created.
         photoFile?.also {
           val photoURI: Uri = FileProvider.getUriForFile(
-                  this,
-                  "com.google.firebase.codelab.mlkit.automl.fileprovider",
-                  it
+            this,
+            "com.google.firebase.codelab.mlkit.automl.fileprovider",
+            it
           )
           takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoURI)
           startActivityForResult(takePictureIntent, REQUEST_IMAGE_CAPTURE)
@@ -132,36 +173,27 @@ class StillImageActivity : AppCompatActivity() {
     }
   }
 
-  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-    if (requestCode == REQUEST_IMAGE_CAPTURE && resultCode == RESULT_OK) {
-      // Make use of FirebaseVisionImage.fromFilePath to take into account Exif Orientation of
-      // the image captured
-      FirebaseVisionImage.fromFilePath(this, Uri.fromFile(currentPhotoFile)).also {
-        classifyImage(it.bitmap)
-      }
-    }
+  private fun clickLiveCameraFeed() {
+    startActivity(Intent(this, CameraActivity::class.java))
   }
 
-  private fun classifyImage(bitmap: Bitmap) {
-    if (classifier == null) {
-      textView?.text = getString(R.string.uninitialized_img_classifier_or_invalid_context)
-      return
-    }
+  private fun clickNextImage() {
+    val imageList = bundledImageList
+    if (imageList.isNullOrEmpty()) { return }
 
-    // Show image on screen
-    imagePreview?.setImageBitmap(bitmap)
+    currentImageIndex = (currentImageIndex + 1) % imageList.size
+    classifyBundledImage(currentImageIndex)
+  }
 
-    // Classify image
-    classifier?.classifyFrame(bitmap)?.
-            addOnCompleteListener { task ->
-              if (task.isSuccessful) {
-                textView?.text = task.result
-              } else {
-                val e = task.exception
-                Log.e(TAG, "Error classifying frame", e)
-                textView?.text = e?.message
-              }
-            }
+  private fun classifyBundledImage(index: Int) {
+    val imageList = bundledImageList
+    if (imageList.isNullOrEmpty()) { return }
+
+    val imageName = imageList[index]
+    val drawableId = resources.getIdentifier(imageName, "drawable", packageName)
+    val bitmap = BitmapFactory.decodeResource(resources, drawableId)
+
+    classifyImage(bitmap)
   }
 
   companion object {
@@ -171,6 +203,9 @@ class StillImageActivity : AppCompatActivity() {
 
     /** Request code for starting photo capture activity  */
     private const val REQUEST_IMAGE_CAPTURE = 1
+
+    /** Request code for starting photo library activity  */
+    private const val REQUEST_PHOTO_LIBRARY = 2
 
   }
 }
