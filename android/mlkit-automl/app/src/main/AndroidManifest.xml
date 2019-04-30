@@ -26,8 +26,6 @@
 
         </activity>
 
-        <activity android:name=".CameraActivity"/>
-
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.google.firebase.codelab.mlkit.automl.fileprovider"

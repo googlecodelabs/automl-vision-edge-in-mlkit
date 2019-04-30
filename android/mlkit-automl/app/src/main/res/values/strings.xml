@@ -16,11 +16,6 @@
 <resources>
     <string name="app_name">AutoML Codelab</string>
 
-    <string name="picture">Picture</string>
-    <string name="description_info">Info</string>
-    <string name="request_permission">This sample needs camera permission.</string>
-    <string name="camera_error">This device doesn\'t support Camera2 API.</string>
-
     <string name="next_image">Next Image</string>
 
     <string name="fail_to_initialize_img_classifier">Failed to initialize an image classifier.</string>

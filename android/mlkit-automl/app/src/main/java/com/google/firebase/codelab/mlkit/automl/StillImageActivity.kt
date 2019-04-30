@@ -55,7 +55,6 @@ class StillImageActivity : AppCompatActivity() {
     textView = findViewById(R.id.result_text)
     findViewById<ImageButton>(R.id.photo_camera_button)?.setOnClickListener { takePhoto() }
     findViewById<ImageButton>(R.id.photo_library_button)?.setOnClickListener { chooseFromLibrary() }
-    findViewById<ImageButton>(R.id.video_camera_button)?.setOnClickListener { clickLiveCameraFeed() }
     findViewById<Button>(R.id.next_image_button)?.setOnClickListener { clickNextImage() }
 
     // Get list of bundled images.
@@ -171,10 +170,6 @@ class StillImageActivity : AppCompatActivity() {
         }
       }
     }
-  }
-
-  private fun clickLiveCameraFeed() {
-    startActivity(Intent(this, CameraActivity::class.java))
   }
 
   private fun clickNextImage() {
