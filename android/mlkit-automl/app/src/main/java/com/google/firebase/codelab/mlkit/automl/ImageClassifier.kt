@@ -112,7 +112,12 @@ internal constructor(context: Context) {
 
       val labelProbList = task.result
 
-      // print the results
+      // Indicate whether the remote or local model is used.
+      // Note: in most common cases, once a remote model is downloaded it will be used. However, in
+      // very rare cases, the model itself might not be valid, and thus the local model is used. In
+      // addition, since model download failures can be transient, and model download can also be
+      // triggered in the background during inference, it is possible that a remote model is used
+      // even if the first download fails.
       var textToShow = "Source: " +
               (if (this.remoteModelDownloadSucceeded) "Remote" else "Local") +
               " model\n"
@@ -122,6 +127,7 @@ internal constructor(context: Context) {
       else
         printTopKLabels(labelProbList)
 
+      // print the results
       textToShow
     }
   }

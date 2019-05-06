@@ -154,8 +154,14 @@ extension ImageClassifer {
       return
     }
 
-    let isUsingRemoteModel = modelManager.isRemoteModelDownloaded(remoteModel)
-    var result = "Source: " + (isUsingRemoteModel ? "Remote" : "Local") + " model\n"
+    // Indicate whether the remote or local model is used.
+    // Note: in most common cases, once a remote model is downloaded it will be used. However, in
+    // very rare cases, the model itself might not be valid, and thus the local model is used. In
+    // addition, since model download failures can be transient, and model download can also be
+    // triggered in the background during inference, it is possible that a remote model is used
+    // even if the first download fails.
+    let isRemoteModelDownloaded = modelManager.isRemoteModelDownloaded(remoteModel)
+    var result = "Source: " + (isRemoteModelDownloaded ? "Remote" : "Local") + " model\n"
 
     let startTime = DispatchTime.now()
 
