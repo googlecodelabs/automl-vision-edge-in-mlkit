@@ -37,7 +37,7 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 
-class StillImageActivity : AppCompatActivity() {
+class StillImageActivity : BaseActivity() {
 
   private var currentPhotoFile: File? = null
   private var imagePreview: ImageView? = null

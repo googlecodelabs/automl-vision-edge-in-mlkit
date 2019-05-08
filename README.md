@@ -29,7 +29,7 @@ Support
 - Stack Overflow: http://stackoverflow.com/questions/tagged/firebase-mlkit
 
 If you've found an error in this sample, please file an issue:
-https://github.com/googlecodelabs/automl-vision-in-mlkit/issues
+https://github.com/googlecodelabs/automl-vision-edge-in-mlkit/issues
 
 Patches are encouraged, and may be submitted by forking this project and
 submitting a pull request through GitHub.
